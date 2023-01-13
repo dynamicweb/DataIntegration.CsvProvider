@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<Version>4.0.14</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<Description>CSV Provider</Description>
+	</PropertyGroup>
+	<PropertyGroup>
+		<PackageProjectUrl>https://doc.dynamicweb.com/</PackageProjectUrl>
+		<PackageTags>Dynamicweb dw10 addin dataintegration providers</PackageTags>
+		<Product>Dynamicweb CMS</Product>
+		<Company>Dynamicweb Software A/S</Company>
+		<Authors>Dynamicweb Software A/S</Authors>
+		<Copyright>Copyright © 2020 Dynamicweb Software A/S</Copyright>
+	</PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="CsvHelper" Version="27.0.2" />
+		<PackageReference Include="Dynamicweb" Version="9.10.19" />
+		<PackageReference Include="Dynamicweb.Core" Version="3.1.0" />
+		<PackageReference Include="Dynamicweb.DataIntegration" Version="3.0.11" />
+		<PackageReference Include="Dynamicweb.Ecommerce" Version="1.10.53" />
+		<PackageReference Include="Dynamicweb.Extensibility" Version="4.0.2" />
+		<PackageReference Include="Dynamicweb.Logging" Version="5.1.2" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="5.0.0" />
+		<PackageReference Include="Microsoft.Bcl.HashCode" Version="1.1.1" />
+		<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+		<PackageReference Include="System.Buffers" Version="4.5.1" />
+		<PackageReference Include="System.Memory" Version="4.5.4" />
+		<PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
+		<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+		<PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+	</ItemGroup>
+</Project>

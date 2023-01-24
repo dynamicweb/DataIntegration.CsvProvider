@@ -1,0 +1,11 @@
+name: Call common build and push
+
+on:
+  push:
+    branches: [ "main" ]
+ 
+jobs:
+  call-pushworkflow:
+    uses: dynamicweb/Common.Actions/.github/workflows/common-nuget-push.yml@main
+    secrets:
+      NUGETAPI: ${{secrets.NUGETAPI}}

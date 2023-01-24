@@ -1,0 +1,10 @@
+name: Call common build
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  call-workflow:
+    uses: dynamicweb/Common.Actions/.github/workflows/common-build.yml@main

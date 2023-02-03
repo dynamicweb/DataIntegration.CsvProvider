@@ -89,27 +89,27 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private List<CsvDestinationWriter> destinationWriters;
 
         [AddInParameter("Input Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Source")]
-        public char SourceFieldDelimiter
+        public string SourceFieldDelimiter
         {
             get { return fieldDelimiter; }
             set { fieldDelimiter = value; }
         }
         [AddInParameter("Output Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Destination")]
-        public char DestinationFieldDelimiter
+        public string DestinationFieldDelimiter
         {
             get { return fieldDelimiter; }
             set { fieldDelimiter = value; }
         }
-        private char fieldDelimiter = ';';
+        private string fieldDelimiter = ";";
 
         [AddInParameter("Input string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Source")]
-        public char SourceQuoteCharacter
+        public string SourceQuoteCharacter
         {
             get { return quoteChar; }
             set { quoteChar = value; }
         }
         [AddInParameter("Output string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Destination")]
-        public char DestinationQuoteCharacter
+        public string DestinationQuoteCharacter
         {
             get { return quoteChar; }
             set { quoteChar = value; }
@@ -156,7 +156,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             set { workingDirectory = value; }
         }
 
-        private char quoteChar = '"';
+        private string quoteChar = "\"";
 
         public override bool SchemaIsEditable
         {
@@ -182,7 +182,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                     Encoding = currentEncoding,
                     HasHeaderRecord = SourceFirstRowContainsColumnNames,
                     Escape = '\\',
-                    Quote = quoteChar,
+                    Quote = Convert.ToChar(quoteChar, CultureInfo.CurrentCulture),
                     TrimOptions = TrimOptions.None,
                     DetectColumnCountChanges = true
                 };
@@ -359,13 +359,13 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 switch (node.Name)
                 {
                     case "SourceFieldDelimiter":
-                        SourceFieldDelimiter = Convert.ToChar(node.FirstChild.Value, CultureInfo.CurrentCulture);
+                        SourceFieldDelimiter = node.FirstChild.Value;
                         break;
                     case "DestinationFieldDelimiter":
-                        DestinationFieldDelimiter = Convert.ToChar(node.FirstChild.Value, CultureInfo.CurrentCulture);
+                        DestinationFieldDelimiter = node.FirstChild.Value;
                         break;
                     case "QuoteChar":
-                        quoteChar = Convert.ToChar(node.FirstChild.Value, CultureInfo.CurrentCulture);
+                        quoteChar = node.FirstChild.Value;
                         break;
                     case "Schema":
                         schema = new Schema(node);
@@ -460,7 +460,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
 
             return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-                fieldDelimiter, quoteChar, GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger);
+                Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger);
         }
 
         public override void LoadSettings(Job job)
@@ -531,11 +531,11 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                         {
                             if (!string.IsNullOrEmpty(WorkingDirectory))
                             {
-                                destinationWriters.Add(new CsvDestinationWriter((workingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, fieldDelimiter, quoteChar, GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
+                                destinationWriters.Add(new CsvDestinationWriter((workingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
                             }
                             else
                             {
-                                destinationWriters.Add(new CsvDestinationWriter(_path, mapping, DestinationFirstRowContainsColumnNames, fieldDelimiter, quoteChar, GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
+                                destinationWriters.Add(new CsvDestinationWriter(_path, mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
                             }
                         }
                     }

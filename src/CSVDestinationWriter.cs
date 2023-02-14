@@ -1,13 +1,13 @@
-﻿using System;
-using System.Globalization;
-using System.Text;
+﻿using Dynamicweb.Core;
+using Dynamicweb.DataIntegration.Integration;
+using Dynamicweb.DataIntegration.Integration.Interfaces;
+using Dynamicweb.DataIntegration.ProviderHelpers;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.DataIntegration.Integration;
-using Dynamicweb.DataIntegration.ProviderHelpers;
-using Dynamicweb.Core;
+using System.Text;
 
 namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 {
@@ -24,7 +24,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                     if (includeTimestampInFileName)
                     {
                         fileName += DateTime.Now.ToString("yyyyMMdd-HHmmssFFFFFFF");
-                    }                    
+                    }
                     writer = new StreamWriter(path.CombinePaths(fileName + ".csv"), false, encoding);
                 }
                 return writer;
@@ -97,7 +97,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private string GetStringToWrite(Dictionary<string, object> row, ColumnMapping columnMapping)
         {
             string stringToWrite;
-            if (columnMapping.SourceColumn == null && columnMapping.HasScriptWithValue())
+            if (columnMapping.SourceColumn == null && columnMapping.HasScriptWithValue)
             {
                 stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
             }
@@ -105,7 +105,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             {
                 if (row[columnMapping.SourceColumn.Name] == DBNull.Value)
                 {
-                    if (columnMapping.HasScriptWithValue())
+                    if (columnMapping.HasScriptWithValue)
                     {
                         stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
                     }
@@ -151,9 +151,10 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                         case ScriptType.None:
                             stringToWrite = quoteChar + stringToWrite + quoteChar + fieldDelimiter;
                             break;
+                        case ScriptType.NewGuid:
+                            stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
+                            break;
                     }
-                    if (columnMapping.HasNewGuidScript())
-                        stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
                 }
             }
             else
@@ -161,7 +162,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 throw new Exception(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
             }
             return stringToWrite;
-        }        
+        }
 
 
         private void InitializeFile()
@@ -174,7 +175,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 
         private string GetColumnName(ColumnMapping columnMapping)
         {
-            if(columnMapping.ScriptType == ScriptType.Constant)
+            if (columnMapping.ScriptType == ScriptType.Constant)
             {
                 return columnMapping.DestinationColumn?.Name;
             }
@@ -221,5 +222,5 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         }
 
         #endregion
-    }    
+    }
 }

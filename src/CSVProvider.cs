@@ -14,13 +14,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
-
-[assembly: InternalsVisibleTo("Dynamicweb.Tests")]
-[assembly: InternalsVisibleTo("Dynamicweb.Test.Integration")]
 
 namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 {
@@ -64,19 +60,19 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         }
 
         //path should point to a folder - if it doesn't, write will fail.
-        [AddInParameter("Source folder"), AddInParameterEditor(typeof(FolderSelectEditor), "htmlClass=NewUIinput;"), AddInParameterGroup("Source")]
+        [AddInParameter("Source folder"), AddInParameterEditor(typeof(FolderSelectEditor), "folder=/Files/"), AddInParameterGroup("Source")]
         public string SourcePath
         {
             get { return _path; }
             set { _path = value; }
         }
-        [AddInParameter("Source file"), AddInParameterEditor(typeof(FileManagerEditor), "inputClass=NewUIinput;folder=/Files/;Icon=fa fa-exclamation-triangle;Tooltip=Selecting a source file will override source folder selection;allowBrowse=true;"), AddInParameterGroup("Source")]
+        [AddInParameter("Source file"), AddInParameterEditor(typeof(FileManagerEditor), "folder=/Files/;Tooltip=Selecting a source file will override source folder selection"), AddInParameterGroup("Source")]
         public string SourceFile { get; set; }
 
         [AddInParameter("Delete source files"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
         public bool DeleteSourceFiles { get; set; }
 
-        [AddInParameter("Destination folder"), AddInParameterEditor(typeof(FolderSelectEditor), "htmlClass=NewUIinput;"), AddInParameterGroup("Destination")]
+        [AddInParameter("Destination folder"), AddInParameterEditor(typeof(FolderSelectEditor), "folder=/Files/"), AddInParameterGroup("Destination")]
         public string DestinationPath
         {
             get { return _path; }
@@ -88,13 +84,13 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private readonly Dictionary<string, CsvReader> csvReadersForTest;
         private List<CsvDestinationWriter> destinationWriters;
 
-        [AddInParameter("Input Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Source")]
+        [AddInParameter("Input Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Source")]
         public string SourceFieldDelimiter
         {
             get { return fieldDelimiter; }
             set { fieldDelimiter = value; }
         }
-        [AddInParameter("Output Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Destination")]
+        [AddInParameter("Output Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Destination")]
         public string DestinationFieldDelimiter
         {
             get { return fieldDelimiter; }
@@ -102,31 +98,31 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         }
         private string fieldDelimiter = ";";
 
-        [AddInParameter("Input string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Source")]
+        [AddInParameter("Input string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Source")]
         public string SourceQuoteCharacter
         {
             get { return quoteChar; }
             set { quoteChar = value; }
         }
-        [AddInParameter("Output string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1;inputClass=NewUIinput;"), AddInParameterGroup("Destination")]
+        [AddInParameter("Output string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Destination")]
         public string DestinationQuoteCharacter
         {
             get { return quoteChar; }
             set { quoteChar = value; }
         }
-        [AddInParameter("Source encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "NewGUI=true;"), AddInParameterGroup("Source")]
+        [AddInParameter("Source encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Source")]
         public string SourceEncoding { get; set; }
 
-        [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "NewGUI=true;"), AddInParameterGroup("Destination")]
+        [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
         public string DestinationEncoding { get; set; }
 
-        [AddInParameter("Number format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), ""), AddInParameterGroup("Destination")]
+        [AddInParameter("Number format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
         public string ExportCultureInfo { get; set; }
 
         private readonly string DetectAutomaticallySeparator = "Detect automatically";
         private readonly string NoneDecimalSeparator = "Use system culture";
         private string sourceDecimalSeparator;
-        [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "NewGUI=true;none=false"), AddInParameterGroup("Source")]
+        [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Source")]
         public string SourceDecimalSeparator
         {
             get

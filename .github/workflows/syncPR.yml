@@ -1,0 +1,13 @@
+name: Call common sync PRs
+on:
+  pull_request_target:
+    types: [opened, edited, closed]
+    branches:
+      - main
+ 
+jobs:
+  call-pushworkflow:
+    uses: dynamicweb/Common.Actions/.github/workflows/SyncPRs.yml@main
+    secrets:
+      ADO_PR: ${{secrets.ADO_PR}}
+      GH_PR: ${{secrets.GH_PR}}

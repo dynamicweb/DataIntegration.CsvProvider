@@ -32,6 +32,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private readonly Encoding encoding;
         private StreamReader textReader;
         private CsvReader reader;
+
         private CsvReader Reader
         {
             get
@@ -56,6 +57,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
 
         }
+
         private readonly ILogger logger;
 
         internal CsvSourceReader(CsvReader reader, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote)
@@ -67,6 +69,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             this.quote = quote;
             VerifyDuplicateColumns();
         }
+
         public CsvSourceReader(string filePath, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote, Encoding encoding,
             string decimalSeparator, bool autoDetectDecimalSeparator, bool ignoreDefectiveRows, ILogger logger)
         {
@@ -82,6 +85,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             VerifyDuplicateColumns();
             this.logger = logger;
         }
+
         public CsvSourceReader()
         {
         }
@@ -115,7 +119,13 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 }
 
                 nextResult = result;
-                return false;
+
+                if (RowMatchesConditions())
+                {
+                    return false;
+                }
+
+                return IsDone();
             }
             else
             {
@@ -123,7 +133,117 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
         }
 
+        private bool RowMatchesConditions()
+        {
+            foreach (MappingConditional conditional in mapping.Conditionals)
+            {
+                var sourceColumnConditional = nextResult[conditional.SourceColumn.Name]?.ToString() ?? string.Empty;
+                var theCondtion = conditional?.Condition ?? string.Empty;
+                switch (conditional.ConditionalOperator)
+                {
+                    case ConditionalOperator.EqualTo:
+                        if (!sourceColumnConditional.Equals(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.DifferentFrom:
+                        if (sourceColumnConditional.Equals(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.Contains:
+                        if (!sourceColumnConditional.Contains(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.LessThan:
+                        string lessThanDecimalValue = theCondtion;
+                        if (!string.IsNullOrEmpty(decimalSeparator) && decimalSeparator != System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator)
+                        {
+                            lessThanDecimalValue = lessThanDecimalValue.Replace(System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator, "");
+                            lessThanDecimalValue = lessThanDecimalValue.Replace(decimalSeparator, System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+                        }
+                        if (Converter.ToDouble(sourceColumnConditional) >= Converter.ToDouble(lessThanDecimalValue))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.GreaterThan:
+                        string greaterThanDecimalValue = theCondtion;
+                        if (!string.IsNullOrEmpty(decimalSeparator) && decimalSeparator != System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator)
+                        {
+                            greaterThanDecimalValue = greaterThanDecimalValue.Replace(System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator, "");
+                            greaterThanDecimalValue = greaterThanDecimalValue.Replace(decimalSeparator, System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+                        }
+                        if (Converter.ToDouble(sourceColumnConditional) <= Converter.ToDouble(greaterThanDecimalValue))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.In:
+                        var inConditionalValue = theCondtion;
+                        if (!string.IsNullOrEmpty(inConditionalValue))
+                        {
+                            List<string> inConditions = inConditionalValue.Split(',').Select(obj => obj.Trim()).ToList();
+                            if (!inConditions.Contains(sourceColumnConditional))
+                            {
+                                return false;
+                            }
+                        }
+                        break;
+                    case ConditionalOperator.StartsWith:
+                        if (!sourceColumnConditional.StartsWith(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.NotStartsWith:
+                        if (sourceColumnConditional.StartsWith(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.EndsWith:
+                        if (!sourceColumnConditional.EndsWith(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.NotEndsWith:
+                        if (sourceColumnConditional.EndsWith(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.NotContains:
+                        if (sourceColumnConditional.Contains(theCondtion))
+                        {
+                            return false;
+                        }
+                        break;
+                    case ConditionalOperator.NotIn:
+                        var notInConditionalValue = theCondtion;
+                        if (!string.IsNullOrEmpty(notInConditionalValue))
+                        {
+                            List<string> notInConditions = notInConditionalValue.Split(',').Select(obj => obj.Trim()).ToList();
+                            if (notInConditions.Contains(sourceColumnConditional))
+                            {
+                                return false;
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return true;
+        }
+
         Dictionary<string, object> nextResult;
+
         public Dictionary<string, object> GetNext()
         {
             return nextResult;

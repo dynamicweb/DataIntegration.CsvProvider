@@ -32,6 +32,8 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private readonly Encoding encoding;
         private StreamReader textReader;
         private CsvReader reader;
+        private readonly CsvProvider _provider;
+
         private CsvReader Reader
         {
             get
@@ -56,6 +58,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
 
         }
+
         private readonly ILogger logger;
 
         internal CsvSourceReader(CsvReader reader, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote)
@@ -67,8 +70,9 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             this.quote = quote;
             VerifyDuplicateColumns();
         }
+
         public CsvSourceReader(string filePath, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote, Encoding encoding,
-            string decimalSeparator, bool autoDetectDecimalSeparator, bool ignoreDefectiveRows, ILogger logger)
+            string decimalSeparator, bool autoDetectDecimalSeparator, bool ignoreDefectiveRows, ILogger logger, CsvProvider provider)
         {
             this.firstRowContainsColumnNames = firstRowContainsColumnNames;
             path = filePath;
@@ -81,7 +85,9 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             this.ignoreDefectiveRows = ignoreDefectiveRows;
             VerifyDuplicateColumns();
             this.logger = logger;
+            _provider = provider;
         }
+
         public CsvSourceReader()
         {
         }
@@ -115,7 +121,13 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 }
 
                 nextResult = result;
-                return false;
+
+                if (RowMatchesConditions())
+                {
+                    return false;
+                }
+
+                return IsDone();
             }
             else
             {
@@ -123,7 +135,20 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
         }
 
+        private bool RowMatchesConditions()
+        {
+            foreach (MappingConditional conditional in mapping.Conditionals)
+            {
+                if (!_provider.CheckCondition(conditional, nextResult))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         Dictionary<string, object> nextResult;
+
         public Dictionary<string, object> GetNext()
         {
             return nextResult;

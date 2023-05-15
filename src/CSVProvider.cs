@@ -456,7 +456,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
 
             return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-                Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger);
+                Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
         }
 
         public override void LoadSettings(Job job)

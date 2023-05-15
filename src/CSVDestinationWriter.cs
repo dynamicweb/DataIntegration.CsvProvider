@@ -79,10 +79,6 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 
         public virtual void Write(Dictionary<string, object> row)
         {
-
-            if (!mapping.Conditionals.CheckConditionals(row))
-                return;
-
             if (!initialized && firstRowContainsColumnNames)
             {
                 InitializeFile();

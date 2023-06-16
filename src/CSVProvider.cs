@@ -355,19 +355,31 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 switch (node.Name)
                 {
                     case "SourceFieldDelimiter":
-                        SourceFieldDelimiter = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            SourceFieldDelimiter = node.FirstChild.Value;
+                        }
                         break;
                     case "DestinationFieldDelimiter":
-                        DestinationFieldDelimiter = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            DestinationFieldDelimiter = node.FirstChild.Value;
+                        }
                         break;
                     case "QuoteChar":
-                        quoteChar = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            quoteChar = node.FirstChild?.Value;
+                        }
                         break;
                     case "Schema":
                         schema = new Schema(node);
                         break;
                     case "SourcePath":
-                        SourcePath = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            SourcePath = node.FirstChild.Value;
+                        }
                         break;
                     case "SourceFile":
                         if (node.HasChildNodes)
@@ -376,39 +388,64 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                         }
                         break;
                     case "DestinationPath":
-                        DestinationPath = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            DestinationPath = node.FirstChild.Value;
+                        }
                         break;
                     case "SourceFirstRowContainsColumnNames":
-                        SourceFirstRowContainsColumnNames = node.FirstChild.Value == "True";
+                        if (node.HasChildNodes)
+                        {
+                            SourceFirstRowContainsColumnNames = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "DestinationFirstRowContainsColumnNames":
-                        DestinationFirstRowContainsColumnNames = node.FirstChild.Value == "True";
+                        if (node.HasChildNodes)
+                        {
+                            DestinationFirstRowContainsColumnNames = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "Encoding":
-                        SourceEncoding = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            SourceEncoding = node.FirstChild.Value;
+                        }
                         break;
                     case "DestinationEncoding":
-                        DestinationEncoding = node.FirstChild.Value;
+                        if (node.HasChildNodes)
+                        {
+                            DestinationEncoding = node.FirstChild.Value;
+                        }
                         break;
                     case "SourceDecimalSeparator":
                         if (node.HasChildNodes)
+                        {
                             sourceDecimalSeparator = node.FirstChild.Value;
+                        }
                         break;
                     case "ExportCultureInfo":
                         if (node.HasChildNodes)
+                        {
                             ExportCultureInfo = node.FirstChild.Value;
+                        }
                         break;
                     case "DeleteSourceFiles":
                         if (node.HasChildNodes)
+                        {
                             DeleteSourceFiles = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "IncludeTimestampInFileName":
                         if (node.HasChildNodes)
+                        {
                             IncludeTimestampInFileName = node.FirstChild.Value == "True";
+                        }
                         break;
                     case "IgnoreDefectiveRows":
                         if (node.HasChildNodes)
+                        {
                             IgnoreDefectiveRows = node.FirstChild.Value == "True";
+                        }
                         break;
                 }
             }

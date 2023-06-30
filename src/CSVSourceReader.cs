@@ -25,14 +25,15 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
         private readonly string path;
         private readonly bool firstRowContainsColumnNames;
         private readonly char delimiter;
-        private readonly char quote;
-        private readonly bool ignoreDefectiveRows;
+        private readonly char _quote;
+        private readonly bool _ignoreDefectiveRows;
         private readonly string decimalSeparator;
         private readonly bool autoDetectDecimalSeparator;
         private readonly Encoding encoding;
         private StreamReader textReader;
         private CsvReader reader;
         private readonly CsvProvider _provider;
+        private static bool _rowBadDataFound = false;
 
         private CsvReader Reader
         {
@@ -44,19 +45,29 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                     textReader = new StreamReader(path, currentEncoding);
                     var config = new CsvConfiguration(CultureInfo.CurrentCulture)
                     {
-                        Comment = quote,
                         Delimiter = delimiter + "",
                         Encoding = currentEncoding,
                         HasHeaderRecord = firstRowContainsColumnNames,
-                        Escape = quote,
-                        Quote = quote,
-                        TrimOptions = TrimOptions.Trim
-                    };
+                        TrimOptions = TrimOptions.Trim,
+                        Comment = _quote,
+                        Escape = _quote,
+                        Quote = _quote,
+                    };                    
+                    if (_ignoreDefectiveRows)
+                    {
+                        config.BadDataFound = OnBadDataFound;
+                    }
                     reader = new CsvReader(textReader, config); //firstRowContainsColumnNames, delimiter, quote, quote, '¤', ValueTrimmingOptions.All
                 }
                 return reader;
             }
 
+        }
+
+        private void OnBadDataFound(BadDataFoundArgs args)
+        {
+            logger.Log(string.Format("Skip failed row. Failed Field: {0}. Failed row: {1}.", args.Field, args.RawRecord));
+            _rowBadDataFound = true;
         }
 
         private readonly ILogger logger;
@@ -67,7 +78,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             this.reader = reader;
             this.mapping = mapping;
             this.delimiter = delimiter;
-            this.quote = quote;
+            this._quote = quote;
             VerifyDuplicateColumns();
         }
 
@@ -78,11 +89,11 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             path = filePath;
             this.mapping = mapping;
             this.delimiter = delimiter;
-            this.quote = quote;
+            this._quote = quote;
             this.encoding = encoding;
             this.decimalSeparator = decimalSeparator;
             this.autoDetectDecimalSeparator = autoDetectDecimalSeparator;
-            this.ignoreDefectiveRows = ignoreDefectiveRows;
+            this._ignoreDefectiveRows = ignoreDefectiveRows;
             VerifyDuplicateColumns();
             this.logger = logger;
             _provider = provider;
@@ -122,7 +133,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 
                 nextResult = result;
 
-                if (RowMatchesConditions())
+                if (result != null && RowMatchesConditions())
                 {
                     return false;
                 }
@@ -156,6 +167,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
 
         private Dictionary<string, object> ReadNextRecord()
         {
+            _rowBadDataFound = false;
             Dictionary<string, object> result = new Dictionary<string, object>();
             foreach (ColumnMapping cm in mapping.GetColumnMappings())
             {
@@ -164,13 +176,27 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                     try
                     {
                         KeyValuePair<string, object> kvp = GetValuesFromReader(cm);
+                        if(_ignoreDefectiveRows && _rowBadDataFound)
+                        {
+                            if (Reader.Read())
+                            {
+                                return ReadNextRecord();
+                            }
+                            else
+                            {
+                                result = null;
+                                break;
+                            }
+                        }
                         result.Add(kvp.Key, kvp.Value);
                     }
                     catch (Exception ex)
                     {
-                        long line = firstRowContainsColumnNames ? Reader.CurrentIndex + 1 : Reader.CurrentIndex;
-                        string lineData = GetErrorLine(line);
-                        if (ignoreDefectiveRows)
+                        string lineData = Reader?.Parser?.RawRecord;
+                        int line = Reader?.Parser?.Row ?? 0;
+                        line = (line > 0 && firstRowContainsColumnNames) ? line - 1 : line;
+
+                        if (_ignoreDefectiveRows)
                         {
                             logger.Log(string.Format("Skip failed row: {0}", lineData));
                             if (Reader.Read())
@@ -187,7 +213,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                         {
                             if (ex is CsvHelper.MissingFieldException)
                             {
-                                throw new Exception(string.Format("Error in the file: {0}, line: {1}, line row: {2}.", path, line, lineData));
+                                throw new Exception(string.Format("MissingField Error in the file: {0}, line: {1}, line row: {2}.", path, line, lineData));
                             }
                             else
                             {
@@ -198,16 +224,6 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                 }
             }
             return result;
-        }
-
-        private string GetErrorLine(long line)
-        {
-            using (var sr = new StreamReader(path))
-            {
-                for (long i = 0; i < line; i++)
-                    sr.ReadLine();
-                return sr.ReadLine();
-            }
         }
 
         private KeyValuePair<string, object> GetValuesFromReader(ColumnMapping cm)

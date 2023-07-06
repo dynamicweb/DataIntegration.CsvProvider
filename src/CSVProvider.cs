@@ -177,11 +177,14 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
                     Delimiter = fieldDelimiter + "",
                     Encoding = currentEncoding,
                     HasHeaderRecord = SourceFirstRowContainsColumnNames,
-                    Escape = '\\',
-                    Quote = Convert.ToChar(quoteChar, CultureInfo.CurrentCulture),
+                    Escape = '\\',                    
                     TrimOptions = TrimOptions.None,
                     DetectColumnCountChanges = true
                 };
+                if (!string.IsNullOrEmpty(quoteChar))
+                {
+                    config.Quote = Convert.ToChar(quoteChar, CultureInfo.CurrentCulture);
+                }
 
                 foreach (string file in GetSourceFiles())
                 {
@@ -317,7 +320,7 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             xmlTextWriter.WriteCData(fieldDelimiter.ToString(CultureInfo.CurrentCulture));
             xmlTextWriter.WriteEndElement();
             xmlTextWriter.WriteStartElement("QuoteChar");
-            xmlTextWriter.WriteCData(quoteChar.ToString(CultureInfo.CurrentCulture));
+            xmlTextWriter.WriteCData(quoteChar?.ToString(CultureInfo.CurrentCulture));
             xmlTextWriter.WriteEndElement();
             xmlTextWriter.WriteElementString("SourceFirstRowContainsColumnNames", SourceFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
             xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
@@ -493,7 +496,8 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider
             }
 
             return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-                Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
+                Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(quoteChar) ? Convert.ToChar(quoteChar, CultureInfo.CurrentCulture) : char.MinValue
+                , GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
         }
 
         public override void LoadSettings(Job job)

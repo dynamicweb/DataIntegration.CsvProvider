@@ -4,12 +4,10 @@ using Dynamicweb.Core;
 using Dynamicweb.Core.Helpers;
 using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.Ecommerce.International;
 using Dynamicweb.Extensibility.AddIns;
 using Dynamicweb.Extensibility.Editors;
 using Dynamicweb.Logging;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -23,41 +21,47 @@ namespace Dynamicweb.DataIntegration.Providers.CsvProvider;
 [AddInName("Dynamicweb.DataIntegration.Providers.Provider"), AddInLabel("CSV Provider"), AddInDescription("CSV provider"), AddInIgnore(false)]
 public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOptions
 {
-    [AddInParameter("First row in source files contains column names"),
-     AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
+    private bool _sourceFirstRowContainsColumnNames = true;
+    private bool _destinationFirstRowContainsColumnNames = true;
+    private string _path = "";
+    private Schema _schema;
+    private readonly Dictionary<string, CsvReader> _csvReadersForTest;
+    private List<CsvDestinationWriter> _destinationWriters;
+    private readonly string _detectAutomaticallySeparator = "Detect automatically";
+    private readonly string _noneDecimalSeparator = "Use system culture";
+    private string _sourceDecimalSeparator;
+    private string _workingDirectory = SystemInformation.MapPath("/Files/");
+    private string _fieldDelimiter = ";";
+    private string _quoteChar = "\"";
+
+    [AddInParameter("First row in source files contains column names"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
     public virtual bool SourceFirstRowContainsColumnNames
     {
         get
         {
-            return sourceFirstRowContainsColumnNames;
+            return _sourceFirstRowContainsColumnNames;
         }
         set
         {
-            sourceFirstRowContainsColumnNames = value;
+            _sourceFirstRowContainsColumnNames = value;
         }
     }
-    private bool sourceFirstRowContainsColumnNames = true;
 
     [AddInParameter("First row in destination files shall contain column names"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Destination")]
     public virtual bool DestinationFirstRowContainsColumnNames
     {
         get
         {
-            return destinationFirstRowContainsColumnNames;
+            return _destinationFirstRowContainsColumnNames;
         }
         set
         {
-            destinationFirstRowContainsColumnNames = value;
+            _destinationFirstRowContainsColumnNames = value;
         }
     }
-    private bool destinationFirstRowContainsColumnNames = true;
 
     [AddInParameter("Include timestamp in filename"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Destination")]
-    public virtual bool IncludeTimestampInFileName
-    {
-        get;
-        set;
-    }
+    public virtual bool IncludeTimestampInFileName { get; set; }
 
     //path should point to a folder - if it doesn't, write will fail.
     [AddInParameter("Source folder"), AddInParameterEditor(typeof(FolderSelectEditor), "folder=/Files/"), AddInParameterGroup("Source")]
@@ -66,6 +70,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         get { return _path; }
         set { _path = value; }
     }
+
     [AddInParameter("Source file"), AddInParameterEditor(typeof(FileManagerEditor), "folder=/Files/;Tooltip=Selecting a source file will override source folder selection"), AddInParameterGroup("Source")]
     public string SourceFile { get; set; }
 
@@ -78,38 +83,35 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         get { return _path; }
         set { _path = value; }
     }
-    private string _path = "";
-
-    private Schema schema;
-    private readonly Dictionary<string, CsvReader> csvReadersForTest;
-    private List<CsvDestinationWriter> destinationWriters;
 
     [AddInParameter("Input Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Source")]
     public string SourceFieldDelimiter
     {
-        get { return fieldDelimiter; }
-        set { fieldDelimiter = value; }
+        get { return _fieldDelimiter; }
+        set { _fieldDelimiter = value; }
     }
+
     [AddInParameter("Output Field delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Destination")]
     public string DestinationFieldDelimiter
     {
-        get { return fieldDelimiter; }
-        set { fieldDelimiter = value; }
+        get { return _fieldDelimiter; }
+        set { _fieldDelimiter = value; }
     }
-    private string fieldDelimiter = ";";
 
     [AddInParameter("Input string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Source")]
     public string SourceQuoteCharacter
     {
-        get { return quoteChar; }
-        set { quoteChar = value; }
+        get { return _quoteChar; }
+        set { _quoteChar = value; }
     }
+
     [AddInParameter("Output string delimiter"), AddInParameterEditor(typeof(TextParameterEditor), "maxLength=1"), AddInParameterGroup("Destination")]
     public string DestinationQuoteCharacter
     {
-        get { return quoteChar; }
-        set { quoteChar = value; }
+        get { return _quoteChar; }
+        set { _quoteChar = value; }
     }
+
     [AddInParameter("Source encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Source")]
     public string SourceEncoding { get; set; }
 
@@ -119,40 +121,34 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     [AddInParameter("Number format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
     public string ExportCultureInfo { get; set; }
 
-    private readonly string DetectAutomaticallySeparator = "Detect automatically";
-    private readonly string NoneDecimalSeparator = "Use system culture";
-    private string sourceDecimalSeparator;
     [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Source")]
     public string SourceDecimalSeparator
     {
         get
         {
-            if (string.IsNullOrEmpty(sourceDecimalSeparator))
+            if (string.IsNullOrEmpty(_sourceDecimalSeparator))
             {
-                return DetectAutomaticallySeparator;
+                return _detectAutomaticallySeparator;
             }
             else
             {
-                return sourceDecimalSeparator;
+                return _sourceDecimalSeparator;
             }
         }
-        set { sourceDecimalSeparator = value; }
+        set { _sourceDecimalSeparator = value; }
     }
 
     [AddInParameter("Skip Troublesome rows"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
     public bool IgnoreDefectiveRows { get; set; }
 
-    private string workingDirectory;
     public override string WorkingDirectory
     {
         get
         {
-            return workingDirectory.CombinePaths(FilesFolderName);
+            return _workingDirectory.CombinePaths(FilesFolderName);
         }
-        set { workingDirectory = value; }
+        set { _workingDirectory = value; }
     }
-
-    private string quoteChar = "\"";
 
     public override bool SchemaIsEditable
     {
@@ -163,9 +159,9 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     {
         Schema result = new Schema();
 
-        if (csvReadersForTest != null && csvReadersForTest.Count > 0)//if unit tests are executing
+        if (_csvReadersForTest != null && _csvReadersForTest.Count > 0)//if unit tests are executing
         {
-            GetSchemaForTableFromFile(result, csvReadersForTest);
+            GetSchemaForTableFromFile(result, _csvReadersForTest);
         }
         else
         {
@@ -174,16 +170,16 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             var config = new CsvConfiguration(CultureInfo.CurrentCulture)
             {
                 Comment = '¤',
-                Delimiter = fieldDelimiter + "",
+                Delimiter = _fieldDelimiter + "",
                 Encoding = currentEncoding,
                 HasHeaderRecord = SourceFirstRowContainsColumnNames,
                 Escape = '\\',                    
                 TrimOptions = TrimOptions.None,
                 DetectColumnCountChanges = true
             };
-            if (!string.IsNullOrEmpty(quoteChar))
+            if (!string.IsNullOrEmpty(_quoteChar))
             {
-                config.Quote = Convert.ToChar(quoteChar, CultureInfo.CurrentCulture);
+                config.Quote = Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture);
             }
 
             foreach (string file in GetSourceFiles())
@@ -213,7 +209,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override void OverwriteSourceSchemaToOriginal()
     {
-        schema = GetOriginalSourceSchema();
+        _schema = GetOriginalSourceSchema();
     }
 
     public override void OverwriteDestinationSchemaToOriginal()
@@ -222,27 +218,30 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override Schema GetSchema()
     {
-        if (schema == null)
+        if (_schema == null)
         {
-            schema = GetOriginalSourceSchema();
+            _schema = GetOriginalSourceSchema();
         }
-        return schema;
+        return _schema;
     }
+
     public override string ValidateDestinationSettings()
     {
-        if (!Directory.Exists((workingDirectory + DestinationPath).Replace("\\", "/")))
+        if (!Directory.Exists((WorkingDirectory + DestinationPath).Replace("\\", "/")))
             return "Destination folder " + DestinationPath + "does not exist";
         return "";
     }
+
     public override string ValidateSourceSettings()
     {
         if (string.IsNullOrEmpty(SourceFile) && string.IsNullOrEmpty(SourcePath))
         {
             return "No Source file neither folder are selected";
         }
+
         if (string.IsNullOrEmpty(SourceFile))
         {
-            string srcFolderPath = (workingDirectory.CombinePaths(SourcePath)).Replace("\\", "/");
+            string srcFolderPath = WorkingDirectory.CombinePaths(SourcePath).Replace("\\", "/");
 
             if (!Directory.Exists(srcFolderPath))
             {
@@ -252,7 +251,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             {
                 var files = Directory.GetFiles(srcFolderPath);
 
-                if (files.Length == 0)
+                if (files.Count() == 0)
                 {
                     return "There are no files in the source folder";
                 }
@@ -260,7 +259,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
         else
         {
-            if (!File.Exists(WorkingDirectory + SourceFile))
+            if (!File.Exists(GetSourceFile()))
             {
                 return "Source file \"" + SourceFile + "\" does not exist";
             }
@@ -272,6 +271,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                 }
             }
         }
+
         if (!string.IsNullOrEmpty(SourceFile) && !string.IsNullOrEmpty(SourcePath))
         {
             return "Warning: In your CSV Provider source, you selected both a source file and a source folder. The source folder selection will be ignored, and only the source file will be used.";
@@ -307,7 +307,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             catch (BadDataException csvEx)
             {
                 string msg = string.Format("Error reading CSV file: {0}.csv. Check field delimiter, it must be the same as in the provider settings: '{1}'.\nError message: {2}",
-                    reader.Key, fieldDelimiter, csvEx.Message);
+                    reader.Key, _fieldDelimiter, csvEx.Message);
                 Logger?.Log(msg);
                 schema.RemoveTable(csvTable);
             }
@@ -317,10 +317,10 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     public new virtual void SaveAsXml(XmlTextWriter xmlTextWriter)
     {
         xmlTextWriter.WriteStartElement("SourceFieldDelimiter");
-        xmlTextWriter.WriteCData(fieldDelimiter.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteCData(_fieldDelimiter.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteEndElement();
         xmlTextWriter.WriteStartElement("QuoteChar");
-        xmlTextWriter.WriteCData(quoteChar?.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteCData(_quoteChar?.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteEndElement();
         xmlTextWriter.WriteElementString("SourceFirstRowContainsColumnNames", SourceFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
@@ -330,16 +330,15 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             xmlTextWriter.WriteElementString("Encoding", SourceEncoding);
         if (!string.IsNullOrEmpty(DestinationEncoding))
             xmlTextWriter.WriteElementString("DestinationEncoding", DestinationEncoding);
-        xmlTextWriter.WriteElementString("SourceDecimalSeparator", sourceDecimalSeparator);
+        xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
         xmlTextWriter.WriteElementString("ExportCultureInfo", ExportCultureInfo);
         xmlTextWriter.WriteElementString("DeleteSourceFiles", DeleteSourceFiles.ToString());
         xmlTextWriter.WriteElementString("IncludeTimestampInFileName", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("IgnoreDefectiveRows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture));
         GetSchema().SaveAsXml(xmlTextWriter);
     }
-    public CsvProvider()
-    {
-    }
+
+    public CsvProvider() { }
 
     public override void Close()
     {
@@ -351,7 +350,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public CsvProvider(XmlNode xmlNode)
     {
-        SourceDecimalSeparator = NoneDecimalSeparator;
+        SourceDecimalSeparator = _noneDecimalSeparator;
 
         foreach (XmlNode node in xmlNode.ChildNodes)
         {
@@ -372,11 +371,11 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                 case "QuoteChar":
                     if (node.HasChildNodes)
                     {
-                        quoteChar = node.FirstChild?.Value;
+                        _quoteChar = node.FirstChild?.Value;
                     }
                     break;
                 case "Schema":
-                    schema = new Schema(node);
+                    _schema = new Schema(node);
                     break;
                 case "SourcePath":
                     if (node.HasChildNodes)
@@ -423,7 +422,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                 case "SourceDecimalSeparator":
                     if (node.HasChildNodes)
                     {
-                        sourceDecimalSeparator = node.FirstChild.Value;
+                        _sourceDecimalSeparator = node.FirstChild.Value;
                     }
                     break;
                 case "ExportCultureInfo":
@@ -456,10 +455,11 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     internal CsvProvider(Dictionary<string, CsvReader> csvReaders, Schema schema, List<CsvDestinationWriter> writer)
     {
-        csvReadersForTest = csvReaders;
-        this.schema = schema;
-        destinationWriters = writer;
+        _csvReadersForTest = csvReaders;
+        this._schema = schema;
+        _destinationWriters = writer;
     }
+
     public CsvProvider(string path)
     {
         this._path = path;
@@ -467,36 +467,25 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public new ISourceReader GetReader(Mapping mapping)
     {
-        bool autoDetectDecimalSeparator = (sourceDecimalSeparator == null) ? false : (sourceDecimalSeparator == DetectAutomaticallySeparator);
+        bool autoDetectDecimalSeparator = (_sourceDecimalSeparator == null) ? false : (_sourceDecimalSeparator == _detectAutomaticallySeparator);
         string decimalSeparator = null;
         //If source decimal separator is diffent from current culture separator - use source decimal separator
-        if (!autoDetectDecimalSeparator && !string.IsNullOrEmpty(sourceDecimalSeparator) && sourceDecimalSeparator != NoneDecimalSeparator &&
-            sourceDecimalSeparator != CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator)
-            decimalSeparator = sourceDecimalSeparator;
+        if (!autoDetectDecimalSeparator && !string.IsNullOrEmpty(_sourceDecimalSeparator) && _sourceDecimalSeparator != _noneDecimalSeparator &&
+            _sourceDecimalSeparator != CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator)
+            decimalSeparator = _sourceDecimalSeparator;
 
-        string currentPath = _path;
         string filePath;
-        if (!string.IsNullOrEmpty(workingDirectory))
-            currentPath = currentPath.CombinePaths((workingDirectory.CombinePaths(_path)).Replace("\\", "/"));
-        currentPath = workingDirectory.CombinePaths(_path).Replace("\\", "/");
         if (!string.IsNullOrEmpty(SourceFile))
         {
-            if (SourceFile.StartsWith(".."))
-            {
-                filePath = (workingDirectory.CombinePaths(SourceFile.TrimStart(new char[] { '.' })).Replace("\\", "/"));
-            }
-            else
-            {
-                filePath = currentPath.CombinePaths(SourceFile);
-            }
+            filePath = GetSourceFile();
         }
         else
         {
-            filePath = currentPath.CombinePaths(mapping.SourceTable.Name + ".csv");
+            filePath = WorkingDirectory.CombinePaths(_path).Replace("\\", "/").CombinePaths(mapping.SourceTable.Name + ".csv");
         }
 
         return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-            Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(quoteChar) ? Convert.ToChar(quoteChar, CultureInfo.CurrentCulture) : char.MinValue
+            Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(_quoteChar) ? Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture) : char.MinValue
             , GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
     }
 
@@ -515,27 +504,28 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         root.Add(CreateParameterNode(GetType(), "Source folder", SourcePath));
         root.Add(CreateParameterNode(GetType(), "Source file", SourceFile));
         root.Add(CreateParameterNode(GetType(), "Destination folder", DestinationPath));
-        root.Add(CreateParameterNode(GetType(), "Input Field delimiter", fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
-        root.Add(CreateParameterNode(GetType(), "Output Field delimiter", fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
+        root.Add(CreateParameterNode(GetType(), "Input Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
+        root.Add(CreateParameterNode(GetType(), "Output Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Input string delimiter", SourceQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Source encoding", SourceEncoding));
         root.Add(CreateParameterNode(GetType(), "Destination encoding", DestinationEncoding));
-        root.Add(CreateParameterNode(GetType(), "Source decimal separator", sourceDecimalSeparator));
+        root.Add(CreateParameterNode(GetType(), "Source decimal separator", _sourceDecimalSeparator));
         root.Add(CreateParameterNode(GetType(), "Number format culture", ExportCultureInfo));
         root.Add(CreateParameterNode(GetType(), "Delete source files", DeleteSourceFiles.ToString()));
         root.Add(CreateParameterNode(GetType(), "Include timestamp in filename", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Ignore defective rows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture)));
         return document.ToString();
     }
+
     public override void UpdateSourceSettings(ISource source)
     {
         CsvProvider newProvider = (CsvProvider)source;
         SourceFirstRowContainsColumnNames = newProvider.SourceFirstRowContainsColumnNames;
         DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
         _path = newProvider._path;
-        fieldDelimiter = newProvider.fieldDelimiter;
-        quoteChar = newProvider.quoteChar;
+        _fieldDelimiter = newProvider._fieldDelimiter;
+        _quoteChar = newProvider._quoteChar;
         SourceEncoding = newProvider.SourceEncoding;
         DestinationEncoding = newProvider.DestinationEncoding;
         SourceDecimalSeparator = newProvider.SourceDecimalSeparator;
@@ -545,6 +535,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         IgnoreDefectiveRows = newProvider.IgnoreDefectiveRows;
         SourceFile = newProvider.SourceFile;
     }
+
     public override void UpdateDestinationSettings(IDestination destination)
     {
         ISource newProvider = (ISource)destination;
@@ -559,36 +550,29 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         {
             CultureInfo ci = GetCultureInfo();
 
-            if (destinationWriters == null)
-            {
-                destinationWriters = new List<CsvDestinationWriter>();
-                foreach (var mapping in job.Mappings)
+                if (_destinationWriters == null)
                 {
-                    if (mapping.Active && mapping.GetColumnMappings().Count > 0)
+                    _destinationWriters = new List<CsvDestinationWriter>();
+                    foreach (var mapping in job.Mappings)
                     {
-                        if (!string.IsNullOrEmpty(WorkingDirectory))
+                        if (mapping.Active && mapping.GetColumnMappings().Count > 0)
                         {
-                            destinationWriters.Add(new CsvDestinationWriter((workingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
-                        }
-                        else
-                        {
-                            destinationWriters.Add(new CsvDestinationWriter(_path, mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
+                            _destinationWriters.Add(new CsvDestinationWriter((WorkingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
                         }
                     }
                 }
-            }
 
-            foreach (var writer in destinationWriters)
-            {
-                using (ISourceReader sourceReader = writer.Mapping.Source.GetReader(writer.Mapping))
+                foreach (var writer in _destinationWriters)
                 {
-                    while (!sourceReader.IsDone())
+                    using (ISourceReader sourceReader = writer.Mapping.Source.GetReader(writer.Mapping))
                     {
-                        sourceRow = sourceReader.GetNext();
-                        ProcessInputRow(writer.Mapping, sourceRow);
-                        writer.Write(sourceRow);
+                        while (!sourceReader.IsDone())
+                        {
+                            sourceRow = sourceReader.GetNext();
+                            ProcessInputRow(writer.Mapping, sourceRow);
+                            writer.Write(sourceRow);
+                        }
                     }
-                }
 
             }
             sourceRow = null;
@@ -601,55 +585,18 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             if (sourceRow != null)
                 msg += GetFailedSourceRowMessage(sourceRow);
 
-            Logger?.Log("Job failed: " + msg);
-            return false;
-        }
-        finally
-        {
-            foreach (var writer in destinationWriters)
-            {
-                writer.Close();
+                Logger?.Log("Job failed: " + msg);
+                return false;
             }
-        }
-        return true;
-    }
-
-    public Hashtable GetOptions(string name)
-    {
-        if (name == "Source decimal separator")
-        {
-            var options = new Hashtable
-                          {
-                              {NoneDecimalSeparator, NoneDecimalSeparator},
-                              {DetectAutomaticallySeparator, DetectAutomaticallySeparator},
-                              {".", "."},
-                              {",", ","}
-                          };
-            return options;
-        }
-        else if (name == "Number format culture")
-        {
-            var options = new Hashtable();
-            CountryCollection countries = Ecommerce.Services.Countries.GetCountries();
-            foreach (Country c in countries)
+            finally
             {
-                if (!string.IsNullOrEmpty(c.CultureInfo) && !options.Contains(c.CultureInfo))
-                    options.Add(c.CultureInfo, c.Code2);
+                foreach (var writer in _destinationWriters)
+                {
+                    writer.Close();
+                }
             }
-            return options;
+            return true;
         }
-        else
-        {
-            var options = new Hashtable
-                          {
-                              {"UTF8", "Unicode (UTF-8)"},
-                              {"UTF16", "Unicode (UTF-16)"},
-                              {"1252", "Windows-1252 (default legacy components of Microsoft Windows. English and most of Europe)"},
-                              {"1251", "Windows-1251 (covering cyrillic, Eastern Europe)"}
-                          };
-            return options;
-        }
-    }
 
     private Encoding GetEncoding(string encoding)
     {
@@ -686,36 +633,31 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         return result;
     }
 
+    private string GetSourceFile()
+    {
+        var filePath = WorkingDirectory.CombinePaths(SourceFile).Replace("\\", "/");
+        if (File.Exists(filePath))
+        {
+            return filePath;
+        }
+        return string.Empty;
+    }
+
     private IEnumerable<string> GetSourceFiles()
     {
-        IEnumerable<string> files = new List<string>();
-
-        string currentPath = _path;
-        if (!string.IsNullOrEmpty(workingDirectory))
-            currentPath = (workingDirectory.CombinePaths(_path)).Replace("\\", "/");
         if (!string.IsNullOrEmpty(SourceFile))
         {
-            if (SourceFile.StartsWith(".."))
-            {
-                files = new List<string>() { (workingDirectory.CombinePaths(SourceFile.TrimStart(new char[] { '.' })).Replace("\\", "/")) };
-            }
-            else
-            {
-                files = new List<string>() { currentPath.CombinePaths(SourceFile) };
-            }
+            return new[] { GetSourceFile() };
         }
         else
         {
-            if (File.Exists(currentPath))
-            {
-                files = new List<string>() { currentPath };
-            }
+            string currentPath = WorkingDirectory.CombinePaths(_path).Replace("\\", "/");
             if (Directory.Exists(currentPath))
             {
-                files = Directory.EnumerateFiles(currentPath, "*.csv", SearchOption.TopDirectoryOnly);
+                return Directory.EnumerateFiles(currentPath, "*.csv", SearchOption.TopDirectoryOnly);
             }
+            return Enumerable.Empty<string>();
         }
-        return files;
     }
 
     private void DeleteFiles()
@@ -779,31 +721,25 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
     }
 
-    public IEnumerable<ParameterOption> GetParameterOptions(string parameterName)
+    public IEnumerable<ParameterOption> GetParameterOptions(string parameterName) => parameterName switch
     {
-        switch (parameterName)
-        {
-            case "Source decimal separator":
-                return new List<ParameterOption>()
+        "Source decimal separator" => new List<ParameterOption>()
                 {
-                    new(NoneDecimalSeparator, NoneDecimalSeparator),
-                    new(DetectAutomaticallySeparator, DetectAutomaticallySeparator),
+                    new(_noneDecimalSeparator, _noneDecimalSeparator),
+                    new(_detectAutomaticallySeparator, _detectAutomaticallySeparator),
                     new(".", "."),
                     new(",", ",")
-                };
-            case "Number format culture":
-                return Ecommerce.Services.Countries.GetCountries()
-                    .Where(c => !string.IsNullOrEmpty(c.CultureInfo))
-                    .DistinctBy(c => c.CultureInfo)
-                    .Select(c => new ParameterOption(c.Code2, c.CultureInfo));
-            default:
-                return new List<ParameterOption>()
+                },
+        "Number format culture" => Ecommerce.Services.Countries.GetCountries()
+                .Where(c => !string.IsNullOrEmpty(c.CultureInfo))
+                .DistinctBy(c => c.CultureInfo)
+                .Select(c => new ParameterOption(c.Code2, c.CultureInfo)),
+        _ => new List<ParameterOption>()
                 {
                     new("Unicode (UTF-8)", "UTF8"),
                     new("Unicode (UTF-16)", "UTF16"),
                     new("Windows-1252 (default legacy components of Microsoft Windows. English and most of Europe)", "1252"),
                     new("Windows-1251 (covering cyrillic, Eastern Europe)", "1251")
-                };
-        }
-    }
+                },
+    };
 }

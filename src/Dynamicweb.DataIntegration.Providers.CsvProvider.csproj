@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Version>10.0.2</Version>
+		<Version>10.0.3</Version>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<Description>CSV Provider</Description>
 	</PropertyGroup>
 	<PropertyGroup>
 		<PackageProjectUrl>https://doc.dynamicweb.com/</PackageProjectUrl>
-		<PackageTags>Dynamicweb dw10 addin dataintegration providers</PackageTags>
+		<PackageTags>Dynamicweb dw10 addin integration providers</PackageTags>
 		<Product>Dynamicweb CMS</Product>
 		<Company>Dynamicweb Software A/S</Company>
 		<Authors>Dynamicweb Software A/S</Authors>
-		<Copyright>Copyright © 2020 Dynamicweb Software A/S</Copyright>
+		<Copyright>Copyright © 2023 Dynamicweb Software A/S</Copyright>
 	</PropertyGroup>
 	<PropertyGroup>
 		<TargetFramework>net7.0</TargetFramework>

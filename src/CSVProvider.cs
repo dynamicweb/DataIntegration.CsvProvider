@@ -64,20 +64,20 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     public virtual bool IncludeTimestampInFileName { get; set; }
 
     //path should point to a folder - if it doesn't, write will fail.
-    [AddInParameter("Source folder"), AddInParameterEditor(typeof(FolderSelectEditor), "folder=/Files/"), AddInParameterGroup("Source")]
+    [AddInParameter("Source folder"), AddInParameterEditor(typeof(FolderSelectEditor), ""), AddInParameterGroup("Source")]
     public string SourcePath
     {
         get { return _path; }
         set { _path = value; }
     }
 
-    [AddInParameter("Source file"), AddInParameterEditor(typeof(FileManagerEditor), "folder=/Files/;Tooltip=Selecting a source file will override source folder selection"), AddInParameterGroup("Source")]
+    [AddInParameter("Source file"), AddInParameterEditor(typeof(FileManagerEditor), "Tooltip=Selecting a source file will override source folder selection"), AddInParameterGroup("Source")]
     public string SourceFile { get; set; }
 
     [AddInParameter("Delete source files"), AddInParameterEditor(typeof(YesNoParameterEditor), ""), AddInParameterGroup("Source")]
     public bool DeleteSourceFiles { get; set; }
 
-    [AddInParameter("Destination folder"), AddInParameterEditor(typeof(FolderSelectEditor), "folder=/Files/"), AddInParameterGroup("Destination")]
+    [AddInParameter("Destination folder"), AddInParameterEditor(typeof(FolderSelectEditor), ""), AddInParameterGroup("Destination")]
     public string DestinationPath
     {
         get { return _path; }

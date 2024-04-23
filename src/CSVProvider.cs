@@ -111,10 +111,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         get { return _quoteChar; }
         set { _quoteChar = value; }
     }
-
-    [AddInParameter("Source encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Source")]
-    public string SourceEncoding { get; set; }
-
+    
     [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
     public string DestinationEncoding { get; set; }
 
@@ -165,13 +162,11 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
         else
         {
-            Dictionary<string, CsvReader> csvReaders = new Dictionary<string, CsvReader>();
-            var currentEncoding = string.IsNullOrEmpty(SourceEncoding) ? Encoding.UTF8 : GetEncoding(SourceEncoding);
+            Dictionary<string, CsvReader> csvReaders = new Dictionary<string, CsvReader>();            
             var config = new CsvConfiguration(CultureInfo.CurrentCulture)
             {
                 Comment = '¤',
-                Delimiter = _fieldDelimiter + "",
-                Encoding = currentEncoding,
+                Delimiter = _fieldDelimiter + "",                
                 HasHeaderRecord = SourceFirstRowContainsColumnNames,
                 Escape = '\\',                    
                 TrimOptions = TrimOptions.None,
@@ -184,7 +179,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
             foreach (string file in GetSourceFiles())
             {
-                var streamReader = new StreamReader(file, currentEncoding);
+                var streamReader = new StreamReader(file);
                 csvReaders.Add(Path.GetFileNameWithoutExtension(file), new CsvReader(streamReader, config));
             }
 
@@ -218,10 +213,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override Schema GetSchema()
     {
-        if (_schema == null)
-        {
-            _schema = GetOriginalSourceSchema();
-        }
+        _schema ??= GetOriginalSourceSchema();
         return _schema;
     }
 
@@ -325,9 +317,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         xmlTextWriter.WriteElementString("SourceFirstRowContainsColumnNames", SourceFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SourcePath", _path);
-        xmlTextWriter.WriteElementString("SourceFile", SourceFile);
-        if (!string.IsNullOrEmpty(SourceEncoding))
-            xmlTextWriter.WriteElementString("Encoding", SourceEncoding);
+        xmlTextWriter.WriteElementString("SourceFile", SourceFile);        
         if (!string.IsNullOrEmpty(DestinationEncoding))
             xmlTextWriter.WriteElementString("DestinationEncoding", DestinationEncoding);
         xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
@@ -406,13 +396,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     {
                         DestinationFirstRowContainsColumnNames = node.FirstChild.Value == "True";
                     }
-                    break;
-                case "Encoding":
-                    if (node.HasChildNodes)
-                    {
-                        SourceEncoding = node.FirstChild.Value;
-                    }
-                    break;
+                    break;                
                 case "DestinationEncoding":
                     if (node.HasChildNodes)
                     {
@@ -485,8 +469,8 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
 
         return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-            Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(_quoteChar) ? Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture) : char.MinValue
-            , GetEncoding(SourceEncoding), decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
+            Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(_quoteChar) ? Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture) : char.MinValue, 
+                decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
     }
 
     public override void LoadSettings(Job job)
@@ -507,8 +491,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         root.Add(CreateParameterNode(GetType(), "Input Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Output Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Input string delimiter", SourceQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
-        root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
-        root.Add(CreateParameterNode(GetType(), "Source encoding", SourceEncoding));
+        root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));        
         root.Add(CreateParameterNode(GetType(), "Destination encoding", DestinationEncoding));
         root.Add(CreateParameterNode(GetType(), "Source decimal separator", _sourceDecimalSeparator));
         root.Add(CreateParameterNode(GetType(), "Number format culture", ExportCultureInfo));
@@ -525,8 +508,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
         _path = newProvider._path;
         _fieldDelimiter = newProvider._fieldDelimiter;
-        _quoteChar = newProvider._quoteChar;
-        SourceEncoding = newProvider.SourceEncoding;
+        _quoteChar = newProvider._quoteChar;        
         DestinationEncoding = newProvider.DestinationEncoding;
         SourceDecimalSeparator = newProvider.SourceDecimalSeparator;
         ExportCultureInfo = newProvider.ExportCultureInfo;
@@ -627,8 +609,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             }
             catch (Exception ex)
             {
-                if (Logger != null)
-                    Logger.Log(string.Format("Error getting culture: {0}.", ex.Message));
+                Logger?.Log(string.Format("Error getting culture: {0}.", ex.Message));
             }
         }
 

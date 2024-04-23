@@ -28,8 +28,7 @@ public class CsvSourceReader : ISourceReader
     private readonly char _quote;
     private readonly bool _ignoreDefectiveRows;
     private readonly string decimalSeparator;
-    private readonly bool autoDetectDecimalSeparator;
-    private readonly Encoding encoding;
+    private readonly bool autoDetectDecimalSeparator;    
     private StreamReader textReader;
     private CsvReader reader;
     private readonly CsvProvider _provider;
@@ -40,18 +39,16 @@ public class CsvSourceReader : ISourceReader
         get
         {
             if (reader == null)
-            {
-                var currentEncoding = encoding ?? Encoding.UTF8;
-                textReader = new StreamReader(path, currentEncoding);
+            {                
+                textReader = new StreamReader(path);
                 var config = new CsvConfiguration(CultureInfo.CurrentCulture)
                 {
-                    Delimiter = delimiter + "",
-                    Encoding = currentEncoding,
+                    Delimiter = delimiter + "",                    
                     HasHeaderRecord = firstRowContainsColumnNames,
                     TrimOptions = TrimOptions.Trim,
                     Comment = _quote,
                     Escape = _quote,
-                    Quote = _quote,
+                    Quote = _quote                    
                 };                    
                 if (_ignoreDefectiveRows)
                 {
@@ -82,15 +79,14 @@ public class CsvSourceReader : ISourceReader
         VerifyDuplicateColumns();
     }
 
-    public CsvSourceReader(string filePath, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote, Encoding encoding,
+    public CsvSourceReader(string filePath, Mapping mapping, bool firstRowContainsColumnNames, char delimiter, char quote,
         string decimalSeparator, bool autoDetectDecimalSeparator, bool ignoreDefectiveRows, ILogger logger, CsvProvider provider)
     {
         this.firstRowContainsColumnNames = firstRowContainsColumnNames;
         path = filePath;
         this.mapping = mapping;
         this.delimiter = delimiter;
-        this._quote = quote;
-        this.encoding = encoding;
+        this._quote = quote;        
         this.decimalSeparator = decimalSeparator;
         this.autoDetectDecimalSeparator = autoDetectDecimalSeparator;
         this._ignoreDefectiveRows = ignoreDefectiveRows;
@@ -227,8 +223,8 @@ public class CsvSourceReader : ISourceReader
     }
 
     private KeyValuePair<string, object> GetValuesFromReader(ColumnMapping cm)
-    {
-        KeyValuePair<string, object> result = new KeyValuePair<string, object>();
+    {        
+        KeyValuePair<string, object> result;
         if (Reader[mapping.SourceTable.Columns.IndexOf(cm.SourceColumn)] == "NULL")
         {
             result = new KeyValuePair<string, object>(cm.SourceColumn.Name, DBNull.Value);
@@ -300,10 +296,8 @@ public class CsvSourceReader : ISourceReader
             {
                 // Release diposable objects used by this instance here.
 
-                if (textReader != null)
-                    textReader.Close();
-                if (reader != null)
-                    reader.Dispose();
+                textReader?.Close();
+                reader?.Dispose();
             }
 
             // Release unmanaged resources here. Don't access reference type fields.

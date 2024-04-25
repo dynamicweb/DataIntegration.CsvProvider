@@ -289,6 +289,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                 }
                 else
                 {
+                    if (reader.Value.Parser?.Record is null) continue;
                     var header = reader.Value.ReadHeader();
                     for (int i = 0; i < columnCount; i++)
                     {

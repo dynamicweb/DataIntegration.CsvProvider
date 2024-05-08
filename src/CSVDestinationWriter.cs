@@ -119,8 +119,7 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
                 }
                 else if (columnMapping.SourceColumn.Type == typeof(DateTime))
                 {
-                    stringToWrite = ((DateTime)row[columnMapping.SourceColumn.Name]).ToString(
-                                        "dd-MM-yyyy HH:mm:ss:fff", CultureInfo.CurrentCulture);
+                    stringToWrite = DateTime.Parse(row[columnMapping.SourceColumn.Name].ToString()).ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture);
                 }
                 else if (cultureInfo != null && (columnMapping.SourceColumn.Type == typeof(int) ||
                             columnMapping.SourceColumn.Type == typeof(decimal) ||

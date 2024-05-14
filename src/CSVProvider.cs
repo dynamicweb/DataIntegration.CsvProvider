@@ -115,8 +115,8 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
     public string DestinationEncoding { get; set; }
 
-    [AddInParameter("Number format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
-    public string ExportCultureInfo { get; set; }
+    [AddInParameter("Destination format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
+    public string ExportCultureInfo { get; set; } = CultureInfo.CurrentCulture.Name;
 
     [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Source")]
     public string SourceDecimalSeparator
@@ -495,7 +495,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));        
         root.Add(CreateParameterNode(GetType(), "Destination encoding", DestinationEncoding));
         root.Add(CreateParameterNode(GetType(), "Source decimal separator", _sourceDecimalSeparator));
-        root.Add(CreateParameterNode(GetType(), "Number format culture", ExportCultureInfo));
+        root.Add(CreateParameterNode(GetType(), "Destination format culture", ExportCultureInfo));
         root.Add(CreateParameterNode(GetType(), "Delete source files", DeleteSourceFiles.ToString()));
         root.Add(CreateParameterNode(GetType(), "Include timestamp in filename", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Ignore defective rows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture)));
@@ -600,7 +600,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     private CultureInfo GetCultureInfo()
     {
-        CultureInfo result = null;
+        CultureInfo result = CultureInfo.CurrentCulture;
 
         if (!string.IsNullOrEmpty(ExportCultureInfo))
         {
@@ -714,7 +714,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     new(".", "."),
                     new(",", ",")
                 },
-        "Number format culture" => Ecommerce.Services.Countries.GetCountries()
+        "Destination format culture" => Ecommerce.Services.Countries.GetCountries()
                 .Where(c => !string.IsNullOrEmpty(c.CultureInfo))
                 .DistinctBy(c => c.CultureInfo)
                 .Select(c => new ParameterOption(c.Code2, c.CultureInfo)),

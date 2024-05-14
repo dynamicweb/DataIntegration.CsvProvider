@@ -1,7 +1,6 @@
 ﻿using Dynamicweb.Core;
 using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.DataIntegration.ProviderHelpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -98,9 +97,27 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
         }
         else if (row.TryGetValue(columnMapping.SourceColumn?.Name ?? "", out object rowValue))
         {
+            if (columnMapping.SourceColumn.Type == typeof(DateTime))
+            {
+                if (DateTime.TryParse(columnMapping.ConvertInputValueToOutputValue(rowValue)?.ToString(), out var theDateTime))
+                {
+                    if (cultureInfo != null)
+                    {
+                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo) + quoteChar + fieldDelimiter;
+                    }
+                    else
+                    {
+                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture) + quoteChar + fieldDelimiter;
+                    }
+                }
+                else
+                {
+                    return quoteChar + DateTime.MinValue.ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture) + quoteChar + fieldDelimiter;
+                }
+            }
             if (rowValue == DBNull.Value)
             {
-                   return "NULL" + fieldDelimiter;
+                return "NULL" + fieldDelimiter;
             }
             else
             {

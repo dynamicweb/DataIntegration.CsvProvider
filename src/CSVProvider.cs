@@ -25,7 +25,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     private bool _destinationFirstRowContainsColumnNames = true;
     private string _path = "";
     private Schema _schema;
-    private Schema _destinationSchema;
     private readonly Dictionary<string, CsvReader> _csvReadersForTest;
     private List<CsvDestinationWriter> _destinationWriters;
     private readonly string _detectAutomaticallySeparator = "Detect automatically";
@@ -200,7 +199,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override Schema GetOriginalDestinationSchema()
     {
-        return _destinationSchema = new Schema();
+        return _schema = new Schema();
     }
 
     public override void OverwriteSourceSchemaToOriginal()
@@ -210,13 +209,13 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override void OverwriteDestinationSchemaToOriginal()
     {
-        _destinationSchema = new Schema();
+        _schema = new Schema();
     }
 
     Schema IDestination.GetSchema()
     {
-        _destinationSchema ??= new Schema();
-        return _destinationSchema;
+        _schema ??= new Schema();
+        return _schema;
     }
 
     Schema ISource.GetSchema()
@@ -390,7 +389,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     break;
                 case "Schema":
                     _schema = new Schema(node);
-                    _destinationSchema = new Schema(node);
                     break;
                 case "SourcePath":
                     if (node.HasChildNodes)

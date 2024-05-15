@@ -25,6 +25,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     private bool _destinationFirstRowContainsColumnNames = true;
     private string _path = "";
     private Schema _schema;
+    private Schema _destinationSchema;
     private readonly Dictionary<string, CsvReader> _csvReadersForTest;
     private List<CsvDestinationWriter> _destinationWriters;
     private readonly string _detectAutomaticallySeparator = "Detect automatically";
@@ -199,7 +200,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override Schema GetOriginalDestinationSchema()
     {
-        return GetSchema();
+        return _destinationSchema = new Schema();
     }
 
     public override void OverwriteSourceSchemaToOriginal()
@@ -209,9 +210,16 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override void OverwriteDestinationSchemaToOriginal()
     {
+        _destinationSchema = new Schema();
     }
 
-    public override Schema GetSchema()
+    Schema IDestination.GetSchema()
+    {
+        _destinationSchema ??= new Schema();
+        return _destinationSchema;
+    }
+
+    Schema ISource.GetSchema()
     {
         _schema ??= GetOriginalSourceSchema();
         return _schema;
@@ -307,7 +315,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
     }
 
-    public new virtual void SaveAsXml(XmlTextWriter xmlTextWriter)
+    void ISource.SaveAsXml(XmlTextWriter xmlTextWriter)
     {
         xmlTextWriter.WriteStartElement("SourceFieldDelimiter");
         xmlTextWriter.WriteCData(_fieldDelimiter.ToString(CultureInfo.CurrentCulture));
@@ -316,17 +324,32 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         xmlTextWriter.WriteCData(_quoteChar?.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteEndElement();
         xmlTextWriter.WriteElementString("SourceFirstRowContainsColumnNames", SourceFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
-        xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SourcePath", _path);
         xmlTextWriter.WriteElementString("SourceFile", SourceFile);
+        xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
+        xmlTextWriter.WriteElementString("DeleteSourceFiles", DeleteSourceFiles.ToString());
+        xmlTextWriter.WriteElementString("IgnoreDefectiveRows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture));
+        (this as ISource).GetSchema().SaveAsXml(xmlTextWriter);
+    }
+
+    void IDestination.SaveAsXml(XmlTextWriter xmlTextWriter)
+    {
+        xmlTextWriter.WriteStartElement("SourceFieldDelimiter");
+        xmlTextWriter.WriteCData(_fieldDelimiter.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteEndElement();
+        xmlTextWriter.WriteStartElement("QuoteChar");
+        xmlTextWriter.WriteCData(_quoteChar?.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteEndElement();
+        xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("SourcePath", _path);
         if (!string.IsNullOrEmpty(DestinationEncoding))
+        {
             xmlTextWriter.WriteElementString("DestinationEncoding", DestinationEncoding);
+        }
         xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
         xmlTextWriter.WriteElementString("ExportCultureInfo", ExportCultureInfo);
-        xmlTextWriter.WriteElementString("DeleteSourceFiles", DeleteSourceFiles.ToString());
         xmlTextWriter.WriteElementString("IncludeTimestampInFileName", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture));
-        xmlTextWriter.WriteElementString("IgnoreDefectiveRows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture));
-        GetSchema().SaveAsXml(xmlTextWriter);
+        (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
     }
 
     public CsvProvider() { }
@@ -367,6 +390,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     break;
                 case "Schema":
                     _schema = new Schema(node);
+                    _destinationSchema = new Schema(node);
                     break;
                 case "SourcePath":
                     if (node.HasChildNodes)
@@ -506,23 +530,25 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     {
         CsvProvider newProvider = (CsvProvider)source;
         SourceFirstRowContainsColumnNames = newProvider.SourceFirstRowContainsColumnNames;
-        DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
         _path = newProvider._path;
         _fieldDelimiter = newProvider._fieldDelimiter;
         _quoteChar = newProvider._quoteChar;
-        DestinationEncoding = newProvider.DestinationEncoding;
         SourceDecimalSeparator = newProvider.SourceDecimalSeparator;
-        ExportCultureInfo = newProvider.ExportCultureInfo;
         DeleteSourceFiles = newProvider.DeleteSourceFiles;
-        IncludeTimestampInFileName = newProvider.IncludeTimestampInFileName;
         IgnoreDefectiveRows = newProvider.IgnoreDefectiveRows;
         SourceFile = newProvider.SourceFile;
     }
 
     public override void UpdateDestinationSettings(IDestination destination)
     {
-        ISource newProvider = (ISource)destination;
-        UpdateSourceSettings(newProvider);
+        CsvProvider newProvider = (CsvProvider)destination;
+        DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
+        _path = newProvider._path;
+        _fieldDelimiter = newProvider._fieldDelimiter;
+        _quoteChar = newProvider._quoteChar;
+        DestinationEncoding = newProvider.DestinationEncoding;
+        ExportCultureInfo = newProvider.ExportCultureInfo;
+        IncludeTimestampInFileName = newProvider.IncludeTimestampInFileName;
     }
 
     public override bool RunJob(Job job)

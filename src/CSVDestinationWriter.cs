@@ -121,7 +121,7 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
             }
             else
             {
-                return quoteChar + columnMapping.ConvertInputValueToOutputValue(rowValue)?.ToString()?.ToString(cultureInfo) + quoteChar + fieldDelimiter ?? "NULL" + fieldDelimiter;
+                return quoteChar + string.Format(cultureInfo, "{0}", columnMapping.ConvertInputValueToOutputValue(rowValue)) + quoteChar + fieldDelimiter ?? "NULL" + fieldDelimiter;
             }
         }
         else

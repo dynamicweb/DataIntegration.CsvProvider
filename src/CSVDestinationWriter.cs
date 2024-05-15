@@ -1,7 +1,6 @@
 ﻿using Dynamicweb.Core;
 using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.Integration.Interfaces;
-using Dynamicweb.DataIntegration.ProviderHelpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -92,71 +91,43 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
 
     private string GetStringToWrite(Dictionary<string, object> row, ColumnMapping columnMapping)
     {
-        string stringToWrite;
-        if (columnMapping.SourceColumn == null && columnMapping.HasScriptWithValue)
+        if (columnMapping.HasScriptWithValue)
         {
-            stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
+            return quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
         }
-        else if (row.ContainsKey(columnMapping.SourceColumn.Name))
+        else if (row.TryGetValue(columnMapping.SourceColumn?.Name ?? "", out object rowValue))
         {
-            if (row[columnMapping.SourceColumn.Name] == DBNull.Value)
+            if (columnMapping.SourceColumn.Type == typeof(DateTime))
             {
-                if (columnMapping.HasScriptWithValue)
+                if (DateTime.TryParse(columnMapping.ConvertInputValueToOutputValue(rowValue)?.ToString(), out var theDateTime))
                 {
-                    stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
+                    if (cultureInfo != null)
+                    {
+                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo) + quoteChar + fieldDelimiter;
+                    }
+                    else
+                    {
+                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture) + quoteChar + fieldDelimiter;
+                    }
                 }
                 else
                 {
-                    stringToWrite = "NULL" + fieldDelimiter;
+                    return quoteChar + DateTime.MinValue.ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture) + quoteChar + fieldDelimiter;
                 }
+            }
+            if (rowValue == DBNull.Value)
+            {
+                return "NULL" + fieldDelimiter;
             }
             else
             {
-                if (columnMapping.SourceColumn.Type == typeof(string))
-                {
-                    stringToWrite = row[columnMapping.SourceColumn.Name].ToString().Replace(quoteChar.ToString(CultureInfo.CurrentCulture),
-                                        quoteChar.ToString(CultureInfo.CurrentCulture) + quoteChar.ToString(CultureInfo.CurrentCulture));
-                }
-                else if (columnMapping.SourceColumn.Type == typeof(DateTime))
-                {
-                    stringToWrite = DateTime.Parse(row[columnMapping.SourceColumn.Name].ToString()).ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture);
-                }
-                else if (cultureInfo != null && (columnMapping.SourceColumn.Type == typeof(int) ||
-                            columnMapping.SourceColumn.Type == typeof(decimal) ||
-                            columnMapping.SourceColumn.Type == typeof(double) ||
-                            columnMapping.SourceColumn.Type == typeof(float)))
-                {
-                    stringToWrite = ValueFormatter.GetFormattedValue(row[columnMapping.SourceColumn.Name], cultureInfo, columnMapping.ScriptType, columnMapping.ScriptValue);
-                }
-                else
-                {
-                    stringToWrite = row[columnMapping.SourceColumn.Name].ToString();
-                }
-                switch (columnMapping.ScriptType)
-                {
-                    case ScriptType.Append:
-                        stringToWrite = quoteChar + stringToWrite + columnMapping.ScriptValue + quoteChar + fieldDelimiter;
-                        break;
-                    case ScriptType.Constant:
-                        stringToWrite = quoteChar + columnMapping.ScriptValue + quoteChar + fieldDelimiter;
-                        break;
-                    case ScriptType.Prepend:
-                        stringToWrite = quoteChar + columnMapping.ScriptValue + stringToWrite + quoteChar + fieldDelimiter;
-                        break;
-                    case ScriptType.None:
-                        stringToWrite = quoteChar + stringToWrite + quoteChar + fieldDelimiter;
-                        break;
-                    case ScriptType.NewGuid:
-                        stringToWrite = quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
-                        break;
-                }
+                return quoteChar + string.Format(cultureInfo, "{0}", columnMapping.ConvertInputValueToOutputValue(rowValue)) + quoteChar + fieldDelimiter ?? "NULL" + fieldDelimiter;
             }
         }
         else
         {
             throw new Exception(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
         }
-        return stringToWrite;
     }
 
 

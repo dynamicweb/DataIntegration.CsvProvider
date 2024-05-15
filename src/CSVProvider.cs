@@ -111,12 +111,12 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         get { return _quoteChar; }
         set { _quoteChar = value; }
     }
-    
+
     [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
     public string DestinationEncoding { get; set; }
 
-    [AddInParameter("Number format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
-    public string ExportCultureInfo { get; set; }
+    [AddInParameter("Destination format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Destination")]
+    public string ExportCultureInfo { get; set; } = CultureInfo.CurrentCulture.Name;
 
     [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Source")]
     public string SourceDecimalSeparator
@@ -162,13 +162,13 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
         else
         {
-            Dictionary<string, CsvReader> csvReaders = new Dictionary<string, CsvReader>();            
+            Dictionary<string, CsvReader> csvReaders = new Dictionary<string, CsvReader>();
             var config = new CsvConfiguration(CultureInfo.CurrentCulture)
             {
                 Comment = '¤',
-                Delimiter = _fieldDelimiter + "",                
+                Delimiter = _fieldDelimiter + "",
                 HasHeaderRecord = SourceFirstRowContainsColumnNames,
-                Escape = '\\',                    
+                Escape = '\\',
                 TrimOptions = TrimOptions.None,
                 DetectColumnCountChanges = true
             };
@@ -199,7 +199,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override Schema GetOriginalDestinationSchema()
     {
-        return GetSchema();
+        return _schema = new Schema();
     }
 
     public override void OverwriteSourceSchemaToOriginal()
@@ -209,9 +209,16 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     public override void OverwriteDestinationSchemaToOriginal()
     {
+        _schema = new Schema();
     }
 
-    public override Schema GetSchema()
+    Schema IDestination.GetSchema()
+    {
+        _schema ??= new Schema();
+        return _schema;
+    }
+
+    Schema ISource.GetSchema()
     {
         _schema ??= GetOriginalSourceSchema();
         return _schema;
@@ -307,7 +314,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
     }
 
-    public new virtual void SaveAsXml(XmlTextWriter xmlTextWriter)
+    void ISource.SaveAsXml(XmlTextWriter xmlTextWriter)
     {
         xmlTextWriter.WriteStartElement("SourceFieldDelimiter");
         xmlTextWriter.WriteCData(_fieldDelimiter.ToString(CultureInfo.CurrentCulture));
@@ -316,17 +323,32 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         xmlTextWriter.WriteCData(_quoteChar?.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteEndElement();
         xmlTextWriter.WriteElementString("SourceFirstRowContainsColumnNames", SourceFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteElementString("SourcePath", _path);
+        xmlTextWriter.WriteElementString("SourceFile", SourceFile);
+        xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
+        xmlTextWriter.WriteElementString("DeleteSourceFiles", DeleteSourceFiles.ToString());
+        xmlTextWriter.WriteElementString("IgnoreDefectiveRows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture));
+        (this as ISource).GetSchema().SaveAsXml(xmlTextWriter);
+    }
+
+    void IDestination.SaveAsXml(XmlTextWriter xmlTextWriter)
+    {
+        xmlTextWriter.WriteStartElement("SourceFieldDelimiter");
+        xmlTextWriter.WriteCData(_fieldDelimiter.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteEndElement();
+        xmlTextWriter.WriteStartElement("QuoteChar");
+        xmlTextWriter.WriteCData(_quoteChar?.ToString(CultureInfo.CurrentCulture));
+        xmlTextWriter.WriteEndElement();
         xmlTextWriter.WriteElementString("DestinationFirstRowContainsColumnNames", DestinationFirstRowContainsColumnNames.ToString(CultureInfo.CurrentCulture));
         xmlTextWriter.WriteElementString("SourcePath", _path);
-        xmlTextWriter.WriteElementString("SourceFile", SourceFile);        
         if (!string.IsNullOrEmpty(DestinationEncoding))
+        {
             xmlTextWriter.WriteElementString("DestinationEncoding", DestinationEncoding);
+        }
         xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
         xmlTextWriter.WriteElementString("ExportCultureInfo", ExportCultureInfo);
-        xmlTextWriter.WriteElementString("DeleteSourceFiles", DeleteSourceFiles.ToString());
         xmlTextWriter.WriteElementString("IncludeTimestampInFileName", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture));
-        xmlTextWriter.WriteElementString("IgnoreDefectiveRows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture));
-        GetSchema().SaveAsXml(xmlTextWriter);
+        (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
     }
 
     public CsvProvider() { }
@@ -397,7 +419,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     {
                         DestinationFirstRowContainsColumnNames = node.FirstChild.Value == "True";
                     }
-                    break;                
+                    break;
                 case "DestinationEncoding":
                     if (node.HasChildNodes)
                     {
@@ -470,7 +492,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         }
 
         return new CsvSourceReader(filePath, mapping, SourceFirstRowContainsColumnNames,
-            Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(_quoteChar) ? Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture) : char.MinValue, 
+            Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), !string.IsNullOrEmpty(_quoteChar) ? Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture) : char.MinValue,
                 decimalSeparator, autoDetectDecimalSeparator, IgnoreDefectiveRows, Logger, this);
     }
 
@@ -492,10 +514,10 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         root.Add(CreateParameterNode(GetType(), "Input Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Output Field delimiter", _fieldDelimiter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Input string delimiter", SourceQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
-        root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));        
+        root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Destination encoding", DestinationEncoding));
         root.Add(CreateParameterNode(GetType(), "Source decimal separator", _sourceDecimalSeparator));
-        root.Add(CreateParameterNode(GetType(), "Number format culture", ExportCultureInfo));
+        root.Add(CreateParameterNode(GetType(), "Destination format culture", ExportCultureInfo));
         root.Add(CreateParameterNode(GetType(), "Delete source files", DeleteSourceFiles.ToString()));
         root.Add(CreateParameterNode(GetType(), "Include timestamp in filename", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Ignore defective rows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture)));
@@ -506,23 +528,25 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     {
         CsvProvider newProvider = (CsvProvider)source;
         SourceFirstRowContainsColumnNames = newProvider.SourceFirstRowContainsColumnNames;
-        DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
         _path = newProvider._path;
         _fieldDelimiter = newProvider._fieldDelimiter;
-        _quoteChar = newProvider._quoteChar;        
-        DestinationEncoding = newProvider.DestinationEncoding;
+        _quoteChar = newProvider._quoteChar;
         SourceDecimalSeparator = newProvider.SourceDecimalSeparator;
-        ExportCultureInfo = newProvider.ExportCultureInfo;
         DeleteSourceFiles = newProvider.DeleteSourceFiles;
-        IncludeTimestampInFileName = newProvider.IncludeTimestampInFileName;
         IgnoreDefectiveRows = newProvider.IgnoreDefectiveRows;
         SourceFile = newProvider.SourceFile;
     }
 
     public override void UpdateDestinationSettings(IDestination destination)
     {
-        ISource newProvider = (ISource)destination;
-        UpdateSourceSettings(newProvider);
+        CsvProvider newProvider = (CsvProvider)destination;
+        DestinationFirstRowContainsColumnNames = newProvider.DestinationFirstRowContainsColumnNames;
+        _path = newProvider._path;
+        _fieldDelimiter = newProvider._fieldDelimiter;
+        _quoteChar = newProvider._quoteChar;
+        DestinationEncoding = newProvider.DestinationEncoding;
+        ExportCultureInfo = newProvider.ExportCultureInfo;
+        IncludeTimestampInFileName = newProvider.IncludeTimestampInFileName;
     }
 
     public override bool RunJob(Job job)
@@ -533,29 +557,29 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         {
             CultureInfo ci = GetCultureInfo();
 
-                if (_destinationWriters == null)
+            if (_destinationWriters == null)
+            {
+                _destinationWriters = new List<CsvDestinationWriter>();
+                foreach (var mapping in job.Mappings)
                 {
-                    _destinationWriters = new List<CsvDestinationWriter>();
-                    foreach (var mapping in job.Mappings)
+                    if (mapping.Active && mapping.GetColumnMappings().Count > 0)
                     {
-                        if (mapping.Active && mapping.GetColumnMappings().Count > 0)
-                        {
-                            _destinationWriters.Add(new CsvDestinationWriter((WorkingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
-                        }
+                        _destinationWriters.Add(new CsvDestinationWriter((WorkingDirectory.CombinePaths(_path)).Replace("\\", "/"), mapping, DestinationFirstRowContainsColumnNames, Convert.ToChar(_fieldDelimiter, CultureInfo.CurrentCulture), Convert.ToChar(_quoteChar, CultureInfo.CurrentCulture), GetEncoding(DestinationEncoding), ci, IncludeTimestampInFileName));
                     }
                 }
+            }
 
-                foreach (var writer in _destinationWriters)
+            foreach (var writer in _destinationWriters)
+            {
+                using (ISourceReader sourceReader = writer.Mapping.Source.GetReader(writer.Mapping))
                 {
-                    using (ISourceReader sourceReader = writer.Mapping.Source.GetReader(writer.Mapping))
+                    while (!sourceReader.IsDone())
                     {
-                        while (!sourceReader.IsDone())
-                        {
-                            sourceRow = sourceReader.GetNext();
-                            ProcessInputRow(writer.Mapping, sourceRow);
-                            writer.Write(sourceRow);
-                        }
+                        sourceRow = sourceReader.GetNext();
+                        ProcessInputRow(writer.Mapping, sourceRow);
+                        writer.Write(sourceRow);
                     }
+                }
 
             }
             sourceRow = null;
@@ -570,18 +594,18 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             if (sourceRow != null)
                 msg += GetFailedSourceRowMessage(sourceRow);
 
-                Logger?.Log("Job failed: " + msg);
-                return false;
-            }
-            finally
-            {
-                foreach (var writer in _destinationWriters)
-                {
-                    writer.Close();
-                }
-            }
-            return true;
+            Logger?.Log("Job failed: " + msg);
+            return false;
         }
+        finally
+        {
+            foreach (var writer in _destinationWriters)
+            {
+                writer.Close();
+            }
+        }
+        return true;
+    }
 
     private Encoding GetEncoding(string encoding)
     {
@@ -600,21 +624,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
 
     private CultureInfo GetCultureInfo()
     {
-        CultureInfo result = null;
-
-        if (!string.IsNullOrEmpty(ExportCultureInfo))
-        {
-            try
-            {
-                result = CultureInfo.GetCultureInfo(ExportCultureInfo);
-            }
-            catch (Exception ex)
-            {
-                Logger?.Log(string.Format("Error getting culture: {0}.", ex.Message));
-            }
-        }
-
-        return result;
+        return CultureInfo.GetCultureInfo(ExportCultureInfo) ?? CultureInfo.CurrentCulture;
     }
 
     private string GetSourceFile()
@@ -714,10 +724,9 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     new(".", "."),
                     new(",", ",")
                 },
-        "Number format culture" => Ecommerce.Services.Countries.GetCountries()
-                .Where(c => !string.IsNullOrEmpty(c.CultureInfo))
-                .DistinctBy(c => c.CultureInfo)
-                .Select(c => new ParameterOption(c.Code2, c.CultureInfo)),
+        "Destination format culture" => CultureInfo.GetCultures(CultureTypes.SpecificCultures)
+            .Where(obj => !string.IsNullOrEmpty(obj.Name))
+            .Select(c => new ParameterOption(c.DisplayName, c.Name)),
         _ => new List<ParameterOption>()
                 {
                     new("Unicode (UTF-8)", "UTF8"),

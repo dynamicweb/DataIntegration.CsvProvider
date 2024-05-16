@@ -1,6 +1,7 @@
 ﻿using Dynamicweb.Core;
 using Dynamicweb.DataIntegration.Integration;
 using Dynamicweb.DataIntegration.Integration.Interfaces;
+using Dynamicweb.DataIntegration.ProviderHelpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -68,7 +69,7 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
     private bool initialized;
     private readonly string path;
     private readonly Encoding encoding = Encoding.UTF8;
-    private readonly CultureInfo cultureInfo;
+    private readonly CultureInfo cultureInfo = CultureInfo.CurrentCulture;
     private readonly bool includeTimestampInFileName;
 
     public virtual Mapping Mapping
@@ -93,7 +94,24 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
     {
         if (columnMapping.HasScriptWithValue)
         {
-            return quoteChar + columnMapping.GetScriptValue() + quoteChar + fieldDelimiter;
+            string value;
+            if (columnMapping.SourceColumn.Type == typeof(DateTime))
+            {
+                DateTime theDate = DateTime.Parse(columnMapping.GetScriptValue());
+                value = theDate.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo);
+            }
+            else if (columnMapping.SourceColumn.Type == typeof(decimal) ||
+                columnMapping.SourceColumn.Type == typeof(double) ||
+                columnMapping.SourceColumn.Type == typeof(float))
+            {
+                value = ValueFormatter.GetFormattedValue(columnMapping.GetScriptValue(), cultureInfo, columnMapping.ScriptType, columnMapping.ScriptValue);
+            }
+            else
+            {
+                value = columnMapping.GetScriptValue();
+            }
+
+            return quoteChar + value + quoteChar + fieldDelimiter;
         }
         else if (row.TryGetValue(columnMapping.SourceColumn?.Name ?? "", out object rowValue))
         {
@@ -101,14 +119,7 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
             {
                 if (DateTime.TryParse(columnMapping.ConvertInputValueToOutputValue(rowValue)?.ToString(), out var theDateTime))
                 {
-                    if (cultureInfo != null)
-                    {
-                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo) + quoteChar + fieldDelimiter;
-                    }
-                    else
-                    {
-                        return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", CultureInfo.InvariantCulture) + quoteChar + fieldDelimiter;
-                    }
+                    return quoteChar + theDateTime.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo) + quoteChar + fieldDelimiter;
                 }
                 else
                 {

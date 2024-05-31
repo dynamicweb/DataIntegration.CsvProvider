@@ -115,8 +115,8 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
     [AddInParameter("Destination encoding"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=true"), AddInParameterGroup("Destination")]
     public string DestinationEncoding { get; set; }
 
-    [AddInParameter("Destination format culture"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Destination")]
-    public string ExportCultureInfo { get; set; } = CultureInfo.CurrentCulture.Name;
+    [Obsolete("Use job.Culture")]
+    public string ExportCultureInfo { get; set; }
 
     [AddInParameter("Source decimal separator"), AddInParameterEditor(typeof(DropDownParameterEditor), "none=false"), AddInParameterGroup("Source")]
     public string SourceDecimalSeparator
@@ -346,7 +346,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
             xmlTextWriter.WriteElementString("DestinationEncoding", DestinationEncoding);
         }
         xmlTextWriter.WriteElementString("SourceDecimalSeparator", _sourceDecimalSeparator);
-        xmlTextWriter.WriteElementString("ExportCultureInfo", ExportCultureInfo);
         xmlTextWriter.WriteElementString("IncludeTimestampInFileName", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture));
         (this as IDestination).GetSchema().SaveAsXml(xmlTextWriter);
     }
@@ -432,12 +431,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                         _sourceDecimalSeparator = node.FirstChild.Value;
                     }
                     break;
-                case "ExportCultureInfo":
-                    if (node.HasChildNodes)
-                    {
-                        ExportCultureInfo = node.FirstChild.Value;
-                    }
-                    break;
                 case "DeleteSourceFiles":
                     if (node.HasChildNodes)
                     {
@@ -517,7 +510,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         root.Add(CreateParameterNode(GetType(), "Output string delimiter", DestinationQuoteCharacter.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Destination encoding", DestinationEncoding));
         root.Add(CreateParameterNode(GetType(), "Source decimal separator", _sourceDecimalSeparator));
-        root.Add(CreateParameterNode(GetType(), "Destination format culture", ExportCultureInfo));
         root.Add(CreateParameterNode(GetType(), "Delete source files", DeleteSourceFiles.ToString()));
         root.Add(CreateParameterNode(GetType(), "Include timestamp in filename", IncludeTimestampInFileName.ToString(CultureInfo.CurrentCulture)));
         root.Add(CreateParameterNode(GetType(), "Ignore defective rows", IgnoreDefectiveRows.ToString(CultureInfo.CurrentCulture)));
@@ -545,7 +537,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         _fieldDelimiter = newProvider._fieldDelimiter;
         _quoteChar = newProvider._quoteChar;
         DestinationEncoding = newProvider.DestinationEncoding;
-        ExportCultureInfo = newProvider.ExportCultureInfo;
         IncludeTimestampInFileName = newProvider.IncludeTimestampInFileName;
     }
 
@@ -555,7 +546,7 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         Dictionary<string, object> sourceRow = null;
         try
         {
-            CultureInfo ci = GetCultureInfo();
+            CultureInfo ci = GetCultureInfo(job.Culture);
 
             if (_destinationWriters == null)
             {
@@ -622,9 +613,17 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
         return result;
     }
 
-    private CultureInfo GetCultureInfo()
+    private CultureInfo GetCultureInfo(string culture)
     {
-        return CultureInfo.GetCultureInfo(ExportCultureInfo) ?? CultureInfo.CurrentCulture;
+        try
+        {
+            return string.IsNullOrWhiteSpace(culture) ? CultureInfo.CurrentCulture : CultureInfo.GetCultureInfo(culture);
+        }
+        catch (CultureNotFoundException ex)
+        {
+            Logger?.Log(string.Format("Error getting culture: {0}. Using {1} instead", ex.Message, CultureInfo.CurrentCulture.Name));
+        }
+        return CultureInfo.CurrentCulture;
     }
 
     private string GetSourceFile()
@@ -724,9 +723,6 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     new(".", "."),
                     new(",", ",")
                 },
-        "Destination format culture" => CultureInfo.GetCultures(CultureTypes.SpecificCultures)
-            .Where(obj => !string.IsNullOrEmpty(obj.Name))
-            .Select(c => new ParameterOption(c.DisplayName, c.Name)),
         _ => new List<ParameterOption>()
                 {
                     new("Unicode (UTF-8)", "UTF8"),

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<Version>10.0.11</Version>
+		<Version>10.4.0</Version>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 		<Title>CSV Provider</Title>
 		<Description>CSV Provider</Description>
@@ -14,7 +14,7 @@
 		<Copyright>Copyright © 2023 Dynamicweb Software A/S</Copyright>
 	</PropertyGroup>
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<IncludeSymbols>true</IncludeSymbols>
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -24,8 +24,8 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="CsvHelper" Version="31.0.4" />
-		<PackageReference Include="Dynamicweb.DataIntegration" Version="10.0.0" />		
-		<PackageReference Include="Dynamicweb.Ecommerce" Version="10.0.0" />
+		<PackageReference Include="Dynamicweb.DataIntegration" Version="10.4.0" />		
+		<PackageReference Include="Dynamicweb.Ecommerce" Version="10.4.0" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
 	</ItemGroup>
 </Project>

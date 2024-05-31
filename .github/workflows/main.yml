@@ -2,7 +2,7 @@ name: Call common build and push
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "milestones/*" ]
  
 jobs:
   call-pushworkflow:

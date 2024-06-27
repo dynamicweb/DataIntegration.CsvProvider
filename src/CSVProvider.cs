@@ -567,8 +567,10 @@ public class CsvProvider : BaseProvider, ISource, IDestination, IParameterOption
                     while (!sourceReader.IsDone())
                     {
                         sourceRow = sourceReader.GetNext();
-                        ProcessInputRow(writer.Mapping, sourceRow);
-                        writer.Write(sourceRow);
+                        if (ProcessInputRow(sourceRow, writer.Mapping))
+                        {
+                            writer.Write(sourceRow);
+                        }
                     }
                 }
 

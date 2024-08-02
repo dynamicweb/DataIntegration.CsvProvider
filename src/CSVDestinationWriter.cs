@@ -95,14 +95,14 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
         if (columnMapping.HasScriptWithValue)
         {
             string value;
-            if (columnMapping.SourceColumn.Type == typeof(DateTime))
+            if (columnMapping.DestinationColumn.Type == typeof(DateTime))
             {
                 DateTime theDate = DateTime.Parse(columnMapping.GetScriptValue());
                 value = theDate.ToString("dd-MM-yyyy HH:mm:ss:fff", cultureInfo);
             }
-            else if (columnMapping.SourceColumn.Type == typeof(decimal) ||
-                columnMapping.SourceColumn.Type == typeof(double) ||
-                columnMapping.SourceColumn.Type == typeof(float))
+            else if (columnMapping.DestinationColumn.Type == typeof(decimal) ||
+                columnMapping.DestinationColumn.Type == typeof(double) ||
+                columnMapping.DestinationColumn.Type == typeof(float))
             {
                 value = ValueFormatter.GetFormattedValue(columnMapping.GetScriptValue(), cultureInfo, columnMapping.ScriptType, columnMapping.ScriptValue);
             }
@@ -137,7 +137,8 @@ public class CsvDestinationWriter : IDestinationWriter, IDisposable
         }
         else
         {
-            throw new Exception(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn.Table.Name, columnMapping.SourceColumn.Name));
+            throw new Exception(BaseDestinationWriter.GetRowValueNotFoundMessage(row, columnMapping.SourceColumn?.Table?.Name ?? columnMapping.DestinationColumn?.Table?.Name, 
+                columnMapping.SourceColumn?.Name ?? columnMapping.DestinationColumn?.Name));
         }
     }
 

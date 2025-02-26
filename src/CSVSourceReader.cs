@@ -144,14 +144,7 @@ public class CsvSourceReader : ISourceReader
 
     private bool RowMatchesConditions()
     {
-        foreach (MappingConditional conditional in mapping.Conditionals)
-        {
-            if (!_provider.CheckCondition(conditional, nextResult))
-            {
-                return false;
-            }
-        }
-        return true;
+        return mapping.Conditionals?.CheckConditionals(nextResult) ?? true;        
     }
 
     Dictionary<string, object> nextResult;
